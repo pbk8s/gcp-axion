@@ -1,0 +1,36 @@
+name: GCP Authentication Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Generate SSH key for gcloud
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keygen -t rsa -f ~/.ssh/google_compute_engine -C $USER -N ""
+        chmod 600 ~/.ssh/google_compute_engine
+        chmod 644 ~/.ssh/google_compute_engine.pub
+
+    - name: Test connection to instance via IAP
+      run: |
+        gcloud compute ssh joe-c4-instance-20250313-170541 \
+          --zone="us-central1-c" \
+          --tunnel-through-iap \
+          --verbosity=debug \
+          --command="echo '✅ Connection successful!'"
